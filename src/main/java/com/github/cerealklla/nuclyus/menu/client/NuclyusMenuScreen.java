@@ -5,6 +5,9 @@ import java.util.List;
 import com.github.cerealklla.nuclyus.NuclyusModClient;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -18,7 +21,7 @@ import net.minecraft.network.chat.Component;
  * {@link #init()} (same "rebuilt from scratch each open" convention every full-screen UI in this
  * suite already follows), sorted by {@link NuclyusMenu#order()}.
  */
-public final class NuclyusMenuScreen extends Screen {
+public final class NuclyusMenuScreen extends Screen implements WidgetHost {
 
     private static final int TAB_BAR_HEIGHT = 24;
     private static final int TAB_BAR_BG = 0xFF373737;
@@ -31,18 +34,37 @@ public final class NuclyusMenuScreen extends Screen {
 
     private List<NuclyusMenu> tabs = List.of();
     private int activeIndex;
+    private boolean initialized;
 
     public NuclyusMenuScreen() {
         super(Component.literal("Menu"));
     }
 
+    /**
+     * Real gap found while porting Myssions' Quest Log (which pushes a {@code ConfirmScreen}/
+     * {@code BugReportScreen} and restores by calling {@code setScreen} with the SAME host instance
+     * passed via {@link NuclyusMenu#attachHost}, not a freshly-constructed one): vanilla calls a
+     * screen's {@code init()} every time {@code setScreen} targets it, including this "restore the
+     * same instance" case and plain window resizes -- not just on a genuinely new open. Rebuilding
+     * {@link #tabs} from {@link NuclyusMenuRegistry#collectAllMenus()} on every such call would
+     * silently discard every tab's live state (scroll position, selection, etc.) the instant a
+     * pushed sub-screen like a confirm dialog closed. {@code tabs}/{@code activeIndex} are now only
+     * ever built once per real open, gated on {@link #initialized}.
+     */
     @Override
     protected void init() {
-        tabs = NuclyusMenuRegistry.collectAllMenus();
-        for (NuclyusMenu tab : tabs) {
-            tab.attachHost(this);
+        if (!initialized) {
+            tabs = NuclyusMenuRegistry.collectAllMenus();
+            for (NuclyusMenu tab : tabs) {
+                tab.attachHost(this);
+            }
+            activeIndex = firstEnabledIndex();
+            initialized = true;
         }
-        activeIndex = firstEnabledIndex();
+        // Vanilla's own init() wrapper already cleared this screen's widget list before calling this
+        // method, even on a repeat call -- re-running onShown() every time (not just the first) lets
+        // a tab with real Button widgets (Quest Log's action buttons, etc.) re-add them. Harmless
+        // re-work for tabs with no widgets of their own.
         if (!tabs.isEmpty()) {
             tabs.get(activeIndex).onShown();
         }
@@ -57,8 +79,32 @@ public final class NuclyusMenuScreen extends Screen {
         return 0;
     }
 
-    private Rect2i contentArea() {
+    /**
+     * Public so a tab can compute button layout from inside {@code onShown()} (which has no {@code
+     * area} parameter of its own, unlike {@code render}/the input methods) -- Quest Log's action
+     * buttons need this, since they're added directly onto the host rather than drawn by the tab
+     * itself.
+     */
+    public Rect2i contentArea() {
         return new Rect2i(0, TAB_BAR_HEIGHT, width, Math.max(0, height - TAB_BAR_HEIGHT));
+    }
+
+    /**
+     * Public wrappers over {@code Screen}'s own {@code addRenderableWidget}/{@code removeWidget} --
+     * both are {@code protected}, so a tab that isn't itself a {@code Screen} subclass (every tab is
+     * a plain object implementing {@link NuclyusMenu}) can't call them directly on a {@code host}
+     * reference even though it's the right instance; these exist so a tab with real widgets (Quest
+     * Log's action buttons, etc.) can add/remove them without this host needing to know anything
+     * about what those widgets are.
+     */
+    @Override
+    public <T extends GuiEventListener & Renderable & NarratableEntry> T addMenuWidget(T widget) {
+        return addRenderableWidget(widget);
+    }
+
+    @Override
+    public void removeMenuWidget(GuiEventListener widget) {
+        removeWidget(widget);
     }
 
     private Rect2i tabButtonRect(int index) {

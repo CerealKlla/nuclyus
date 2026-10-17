@@ -44,7 +44,14 @@ public interface NuclyusMenu {
     default void attachHost(Screen host) {
     }
 
-    /** Called every time this tab becomes the active one (including the first time the menu opens). */
+    /**
+     * Called every time this tab becomes the active one (including the first time the menu opens),
+     * AND every time the host screen re-runs its own {@code init()} while this tab is already active
+     * (a window resize, or returning from a pushed sub-screen like a confirm dialog -- vanilla always
+     * clears a screen's widget list on {@code init()}, even on a repeat call against the same
+     * instance). A tab that adds real widgets via {@link #attachHost} must re-add them here every
+     * time, not just once -- this method is the only signal it gets that they were just cleared.
+     */
     void onShown();
 
     /** Called every time this tab stops being the active one, including when the whole menu closes. */
