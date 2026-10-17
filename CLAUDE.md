@@ -45,6 +45,13 @@ area), and the "K" keybind (`NuclyusModClient`, moved here from Lyfe's former K=
 `runServer` boot-smoke-tested clean from Cartographyr. **Not yet live-tested** -- no real
 contributor has registered a tab yet (Lyfe/Myssions/Coryspondance's own follow-up work).
 
-Next: Lyfe, Myssions, and Coryspondance each become `MenuContributor`s -- see each mod's own
-CLAUDE.md for their side of this (Character Info/Map/Skills/Hunter's Journal/Crafting Guide/Rune
-Codex in Lyfe; Quests in Myssions; Mail in Coryspondance).
+**All 8 tabs landed the same day** (see [context/decisions.md](context/decisions.md)) -- Lyfe
+(Character Info, Map, Skills, Hunter's Journal, Crafting Guide, Rune Codex), Myssions (Quests),
+Coryspondance (Mail); see each mod's own CLAUDE.md for their side. New `menu.client.WidgetHost`
+interface (lets a tab add/remove real widgets on whatever host it's attached to, since
+`Screen#addRenderableWidget`/`#removeWidget` are `protected`) and a real fix to
+`NuclyusMenuScreen#init()` (it was rebuilding the whole tab list -- discarding every tab's live
+state -- every time `setScreen` targeted the same host instance again, not just on a genuinely new
+open; this happens whenever Quest Log's Abandon-confirm/Report-Bug dialog closes). `./gradlew build`
+green, whole-suite (12 mods) rebuild green, `runServer` boot-smoke-tested clean. **Not yet
+live-tested in a real client.**
