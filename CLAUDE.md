@@ -56,23 +56,37 @@ open; this happens whenever Quest Log's Abandon-confirm/Report-Bug dialog closes
 green, whole-suite (12 mods) rebuild green, `runServer` boot-smoke-tested clean. **Not yet
 live-tested in a real client.**
 
-**Next, agreed 2026-10-17**: three real patterns duplicated across sibling mods, now candidates to
-pull into Nuclyus as shared base classes/utilities (its stated purpose beyond just the menu system):
-1. **Word-wrap text helper** -- `wrapText`/`wrapToWidth`, nearly line-for-line identical in
-   `SkillsScreen`-successor code, Myssions' `QuestLogTab`, Coryspondance's `MailboxTab`, Lyfe's
-   `CraftingStructureScreen`, and the new menu tabs this session added. Trivial, zero-risk --
-   a static `Nuclyus.wrapText(Font, String, int): List<String>` utility, every call site repointed.
-2. **`PersistedServerStore<T>`** -- Lyfe's `craft.ServerRecipeStore`/`cook.ServerFoodRecipeStore`/
-   `socket.ServerRunewordStore` are three near-identical copies of "generate once on first boot,
-   persist to a JSON file in the server's own working directory via Gson+Codec, reuse thereafter."
-   A generic version would collapse all three to thin wrappers.
-3. **The `Client*Request*` bridge pattern** -- the common-safe static holder + client-tick poller
-   that lets a server-sent payload open a screen without a common-sourceset class ever referencing
-   `Minecraft`/`Screen` directly (the load-bearing pattern behind the real Production crash
-   documented in the root project's own CLAUDE.md). Lyfe (`knowledge.ClientWritingRequest`,
-   `recallcinite.client.ClientRecallciniteState`, etc.) and Settlemynts
-   (`founding.ClientFoundingRequests`, `plotsign.ClientPlotSignRequests`,
-   `guardhouse.ClientGuardhouseRequests`) each reimplement this independently today.
+**Three shared utilities extracted from real sibling-mod duplicates, 2026-10-17** (see
+[context/decisions.md](context/decisions.md)) -- the first real use of Nuclyus as a foundation
+beyond just the menu system, per the user's own framing: "a mod which is meant to be hard-imported
+by all the others which contains base classes." All three are pure behavior-preserving extractions
+(no call-site-visible change):
+1. **`client.TextWrap#wrap(Font, String, int): List<String>`** -- the real duplicate turned out to
+   be only 4 call sites, not the larger list first guessed (Lyfe's `CraftingStructureScreen`/
+   `CookingStructureScreen` and Myssions'/Lyfe's Hunter's Journal/Crafting Guide tabs never actually
+   wrapped text at all) -- Lyfe's `SkillsTab`/`RuneCodexTab`, Myssions' `QuestLogTab`, Coryspondance's
+   `MailboxTab`.
+2. **`server.PersistedServerStore<K, V>`** -- collapsed Lyfe's `craft.ServerRecipeStore`/
+   `cook.ServerFoodRecipeStore`/`socket.ServerRunewordStore` into thin static facades over one
+   generic instance each (constructed with a file name, entry `Codec`, and key-extractor function);
+   each subclass now only supplies its own `generate()`. `ServerRunewordStore` additionally uses the
+   new `onLoaded()` hook to keep recomputing `RuneWorth` on every load/reroll.
+3. **`request.ClientRequestSlot<T>`/`request.ClientRequestQueue<T>`** -- the poll-once-handoff
+   pattern (a volatile pending value/queue + request/takePending, written from a common payload
+   handler and read only from a client-only tick listener) repointed into Lyfe
+   (`knowledge.ClientWritingRequest`, part of `recallcinite.client.ClientRecallciniteState`),
+   Settlemynts (`founding.ClientFoundingRequests`, `plotsign.ClientPlotSignRequests`,
+   `guardhouse.ClientGuardhouseRequests`), Blueprynts (`construction.ClientConstructionRequests`,
+   its preview-image queue using `ClientRequestQueue`), and Kyt (`ClientKytRequests`) -- two more
+   real call sites (Blueprynts, Kyt) than the three originally flagged. Both classes are themselves
+   free of any client-only import, same as every class they're used from.
+
+`./gradlew build`/`test` green in Nuclyus and all six consuming repos (Lyfe, Myssions,
+Coryspondance, Settlemynts, Blueprynts, Kyt), whole-suite (12 mods) `sync-mods.sh` rebuild green,
+`runServer` boot-smoke-tested clean from Cartographyr (all 12 mods logged common setup, `Done
+(0.919s)`, no exceptions). **Not separately live-tested** -- these are refactors with no intended
+behavior change, verified by the boot test plus each repo's own green `test` task, not a new
+client-visible feature needing its own playtest.
 
 Deliberately not pursuing anything more speculative yet (e.g. a generic registry base class for the
 open-contribution-registry shape `MenuContributor`/Cartographyr's `Layer`/Settlemynts'
