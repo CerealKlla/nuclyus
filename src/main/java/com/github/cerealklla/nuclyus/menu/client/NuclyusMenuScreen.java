@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
 public final class NuclyusMenuScreen extends Screen implements WidgetHost {
 
     private static final int TAB_BAR_HEIGHT = 24;
+    private static final int TAB_PADDING = 6;
     private static final int TAB_BAR_BG = 0xFF373737;
     private static final int TAB_ACTIVE_BG = 0xFFC6C6C6;
     private static final int TAB_INACTIVE_BG = 0xFF8B8B8B;
@@ -107,11 +108,34 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
         removeWidget(widget);
     }
 
-    private Rect2i tabButtonRect(int index) {
-        int tabWidth = tabs.isEmpty() ? width : width / tabs.size();
-        int x = index * tabWidth;
-        int w = (index == tabs.size() - 1) ? width - x : tabWidth; // last tab absorbs rounding remainder
-        return new Rect2i(x, 0, w, TAB_BAR_HEIGHT);
+    /**
+     * Real bug found live, 2026-10-17: tabs used to split {@code width} evenly regardless of each
+     * title's actual text width, so a longer label (e.g. "Hunter's Journal") overran its fixed slice
+     * into the neighboring tab's whenever the font rendered larger relative to the window (a higher
+     * GUI Scale at the same resolution) -- confirmed by comparing two screenshots at different GUI
+     * Scales, one overlapping/truncated, one fine. Each tab is now sized to its own text width
+     * (plus padding); the last tab still absorbs any remaining slack so the bar still spans the full
+     * width with no background gap, exactly as before.
+     */
+    private Rect2i[] tabRects() {
+        Rect2i[] rects = new Rect2i[tabs.size()];
+        if (tabs.isEmpty()) {
+            return rects;
+        }
+        int[] widths = new int[tabs.size()];
+        int sum = 0;
+        for (int i = 0; i < tabs.size(); i++) {
+            widths[i] = font.width(tabs.get(i).title()) + TAB_PADDING * 2;
+            sum += widths[i];
+        }
+        int lastIndex = widths.length - 1;
+        widths[lastIndex] = Math.max(widths[lastIndex], width - (sum - widths[lastIndex]));
+        int x = 0;
+        for (int i = 0; i < widths.length; i++) {
+            rects[i] = new Rect2i(x, 0, widths[i], TAB_BAR_HEIGHT);
+            x += widths[i];
+        }
+        return rects;
     }
 
     private void switchTo(int index) {
@@ -133,9 +157,10 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 
         graphics.fill(0, 0, width, TAB_BAR_HEIGHT, TAB_BAR_BG);
+        Rect2i[] rects = tabRects();
         for (int i = 0; i < tabs.size(); i++) {
             NuclyusMenu tab = tabs.get(i);
-            Rect2i rect = tabButtonRect(i);
+            Rect2i rect = rects[i];
             boolean enabled = tab.enabled();
             boolean active = i == activeIndex;
             int bg = !enabled ? TAB_DISABLED_BG : active ? TAB_ACTIVE_BG : TAB_INACTIVE_BG;
@@ -158,8 +183,9 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.y() < TAB_BAR_HEIGHT) {
+            Rect2i[] rects = tabRects();
             for (int i = 0; i < tabs.size(); i++) {
-                Rect2i rect = tabButtonRect(i);
+                Rect2i rect = rects[i];
                 if (rect.contains((int) event.x(), (int) event.y()) && tabs.get(i).enabled()) {
                     switchTo(i);
                     return true;

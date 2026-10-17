@@ -92,3 +92,12 @@ Deliberately not pursuing anything more speculative yet (e.g. a generic registry
 open-contribution-registry shape `MenuContributor`/Cartographyr's `Layer`/Settlemynts'
 `ZoneTypeRegistry` all share) -- extracting from a second real duplicate is reasonable, extracting
 ahead of one isn't.
+
+**Real live-test bug fixed, 2026-10-17** -- a player screenshot at a wider GUI Scale showed tab
+labels overlapping/truncated ("Hunter's JourCrafting Guide"); `NuclyusMenuScreen#tabButtonRect`
+used to split the tab bar into equal-width slices regardless of each title's actual text width, so
+a longer label overran its fixed slice once the font rendered larger relative to the window. Fixed
+with a new `tabRects()` sizing each tab to its own text width (plus padding), the last tab still
+absorbing any remaining slack so the bar still spans edge to edge. `./gradlew build` green,
+whole-suite (12 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet re-confirmed live** --
+this fix was built directly from a reported screenshot, not yet re-tested in game.
