@@ -55,3 +55,26 @@ state -- every time `setScreen` targeted the same host instance again, not just 
 open; this happens whenever Quest Log's Abandon-confirm/Report-Bug dialog closes). `./gradlew build`
 green, whole-suite (12 mods) rebuild green, `runServer` boot-smoke-tested clean. **Not yet
 live-tested in a real client.**
+
+**Next, agreed 2026-10-17**: three real patterns duplicated across sibling mods, now candidates to
+pull into Nuclyus as shared base classes/utilities (its stated purpose beyond just the menu system):
+1. **Word-wrap text helper** -- `wrapText`/`wrapToWidth`, nearly line-for-line identical in
+   `SkillsScreen`-successor code, Myssions' `QuestLogTab`, Coryspondance's `MailboxTab`, Lyfe's
+   `CraftingStructureScreen`, and the new menu tabs this session added. Trivial, zero-risk --
+   a static `Nuclyus.wrapText(Font, String, int): List<String>` utility, every call site repointed.
+2. **`PersistedServerStore<T>`** -- Lyfe's `craft.ServerRecipeStore`/`cook.ServerFoodRecipeStore`/
+   `socket.ServerRunewordStore` are three near-identical copies of "generate once on first boot,
+   persist to a JSON file in the server's own working directory via Gson+Codec, reuse thereafter."
+   A generic version would collapse all three to thin wrappers.
+3. **The `Client*Request*` bridge pattern** -- the common-safe static holder + client-tick poller
+   that lets a server-sent payload open a screen without a common-sourceset class ever referencing
+   `Minecraft`/`Screen` directly (the load-bearing pattern behind the real Production crash
+   documented in the root project's own CLAUDE.md). Lyfe (`knowledge.ClientWritingRequest`,
+   `recallcinite.client.ClientRecallciniteState`, etc.) and Settlemynts
+   (`founding.ClientFoundingRequests`, `plotsign.ClientPlotSignRequests`,
+   `guardhouse.ClientGuardhouseRequests`) each reimplement this independently today.
+
+Deliberately not pursuing anything more speculative yet (e.g. a generic registry base class for the
+open-contribution-registry shape `MenuContributor`/Cartographyr's `Layer`/Settlemynts'
+`ZoneTypeRegistry` all share) -- extracting from a second real duplicate is reasonable, extracting
+ahead of one isn't.
