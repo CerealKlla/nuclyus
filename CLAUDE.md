@@ -110,3 +110,24 @@ this fix was built directly from a reported screenshot, not yet re-tested in gam
 existing key untouched, and saves back only if anything changed -- fixes all three current
 subclasses, and any future one, for free. `./gradlew build` green here and in Lyfe. **Not yet
 live-tested** -- only takes effect on a real server restart.
+
+**Player-centric Pinging infrastructure, 2026-10-18** (see
+[context/decisions.md](context/decisions.md), [context/classes/Ping.md](context/classes/Ping.md))
+-- new `ping` package, built from a design discussion aimed at reducing server load from the
+suite's many independent per-mod timer-based scans, shifting toward event-driven dispatch where it
+makes sense. `ping.Pingable` is a plain interface any `BlockEntity`/`Entity` in any mod implements
+directly, with no registration anywhere in Nuclyus -- `ping.client.ClientPingScanner` finds nearby
+implementors via a plain `instanceof` check against structures the client already tracks for
+rendering (loaded chunks' own block-entity maps, the level's own loaded entities), and reports only
+a small candidate list to the server, which re-validates real distance before dispatching
+(`PingDispatcher`) -- the actual point is moving the recurring scan cost onto each player's own
+client, not eliminating it ("90% of the goal is moving the cost off the server," not performance in
+the abstract). Cooldown/throttling is deliberately NOT part of the `Pingable` contract itself
+(`PingCooldown` is an optional convenience helper, not required) -- confirmed explicitly: different
+implementations legitimately want different cooldown shapes, so Nuclyus shouldn't force one.
+Confirmed out of scope for this: every existing settlement-simulation ticker in Settlemynts
+(`NpcAutoFundingTicker` etc.) needs to keep running with no player nearby at all, which this
+mechanism can't trigger by design. `./gradlew build` green, whole-suite (12 mods) rebuild +
+`runServer` boot-smoke-test clean. **Pure infrastructure, no real consumer exists anywhere in the
+suite yet, and the new client-side scanning code hasn't been exercised by a real `runClient`
+session** -- ready whenever a future feature wants it.

@@ -1,6 +1,7 @@
 package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.menu.client.NuclyusMenuScreen;
+import com.github.cerealklla.nuclyus.ping.client.ClientPingScanner;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -45,5 +46,6 @@ public class NuclyusModClient {
                 minecraft.setScreen(new NuclyusMenuScreen());
             }
         }
+        ClientPingScanner.tick();
     }
 }
