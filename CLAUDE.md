@@ -101,3 +101,12 @@ with a new `tabRects()` sizing each tab to its own text width (plus padding), th
 absorbing any remaining slack so the bar still spans edge to edge. `./gradlew build` green,
 whole-suite (12 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet re-confirmed live** --
 this fix was built directly from a reported screenshot, not yet re-tested in game.
+
+**`PersistedServerStore` now self-heals a file that predates a later-added entry, 2026-10-17** (see
+[context/decisions.md](context/decisions.md)) -- real report (Lyfe): researching Bow/Crossbow said
+"nothing to learn" because the server's persisted recipe file predated those two being added to
+`generate()`, and `loadOrGenerate` only ever regenerated on a genuinely *absent* file. New
+`mergeMissing` adds any key `generate()` produces that the loaded map doesn't have, leaving every
+existing key untouched, and saves back only if anything changed -- fixes all three current
+subclasses, and any future one, for free. `./gradlew build` green here and in Lyfe. **Not yet
+live-tested** -- only takes effect on a real server restart.

@@ -59,8 +59,40 @@ public abstract class PersistedServerStore<K, V> {
 
     public final void loadOrGenerate(MinecraftServer server) {
         Path file = server.getFile(fileName);
-        values = Files.exists(file) ? load(file).orElseGet(() -> generateAndSave(file)) : generateAndSave(file);
+        if (Files.exists(file)) {
+            values = load(file).map(loaded -> mergeMissing(loaded, file)).orElseGet(() -> generateAndSave(file));
+        } else {
+            values = generateAndSave(file);
+        }
         onLoaded();
+    }
+
+    /**
+     * Self-heals a persisted file that predates a later-added generated entry -- real report,
+     * 2026-10-17: "researching Bow or Crossbow says 'nothing to learn,'" traced to the server's own
+     * {@code lyfe_equipment_recipes.json} having been generated (and persisted) before ranged
+     * weapons were added to {@code craft.ServerRecipeStore#generate} -- {@code loadOrGenerate} used
+     * to only ever generate fresh on a genuinely absent file, so an existing-but-now-incomplete file
+     * silently stayed incomplete forever; neither a world wipe nor a normal reboot ever revisits it.
+     * Calls {@link #generate} once (its full, current key set) purely to find keys the loaded map is
+     * missing -- never overwrites or re-rolls a key the loaded map already has, so this can't disturb
+     * anything a player has already seen/adjusted to. Saves back to disk only if anything was
+     * actually added.
+     */
+    private Map<K, V> mergeMissing(Map<K, V> loaded, Path file) {
+        Map<K, V> fresh = generate();
+        Map<K, V> merged = new LinkedHashMap<>(loaded);
+        boolean changed = false;
+        for (Map.Entry<K, V> entry : fresh.entrySet()) {
+            if (!merged.containsKey(entry.getKey())) {
+                merged.put(entry.getKey(), entry.getValue());
+                changed = true;
+            }
+        }
+        if (changed) {
+            save(file, merged);
+        }
+        return merged;
     }
 
     /** Forces a brand-new random generation, overwriting the cached file. */
