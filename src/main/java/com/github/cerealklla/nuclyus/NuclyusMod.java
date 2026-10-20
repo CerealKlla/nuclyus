@@ -2,6 +2,7 @@ package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
+import com.github.cerealklla.nuclyus.trade.ModTradeComponents;
 
 import com.mojang.logging.LogUtils;
 
@@ -26,6 +27,7 @@ public class NuclyusMod {
     public NuclyusMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
+        ModTradeComponents.DATA_COMPONENTS.register(modEventBus);
     }
 
     private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
