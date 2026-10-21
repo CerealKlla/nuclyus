@@ -14,6 +14,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import org.joml.Matrix4f;
@@ -90,6 +92,15 @@ public final class StatBarWorldOverlay implements GuiLayer {
             }
 
             Vec3 worldPos = living.getPosition(partialTick).add(0.0, living.getBbHeight() + 0.3, 0.0);
+            // Real follow-up, 2026-10-21: "is there any way to prevent it being visible through
+            // terrain?" -- a screen-space overlay has no inherent depth test against the world at
+            // all (that's the whole reason it sidesteps the render-state-identity problem), so
+            // without this it draws through walls unconditionally. A plain block raycast from the
+            // camera to the bar's own anchor point is enough -- MISS means a clear line of sight.
+            if (level.clip(new ClipContext(cameraPos, worldPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player))
+                    .getType() != HitResult.Type.MISS) {
+                continue;
+            }
             Vec3 relative = worldPos.subtract(cameraPos);
             Vector4f clip = new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1.0F);
             viewProjection.transform(clip);
