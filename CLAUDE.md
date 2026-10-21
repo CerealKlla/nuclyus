@@ -131,3 +131,17 @@ mechanism can't trigger by design. `./gradlew build` green, whole-suite (12 mods
 `runServer` boot-smoke-test clean. **Pure infrastructure, no real consumer exists anywhere in the
 suite yet, and the new client-side scanning code hasn't been exercised by a real `runClient`
 session** -- ready whenever a future feature wants it.
+
+**Generic floating stat-bar system, 2026-10-21** (see [context/decisions.md](context/decisions.md))
+-- explicit user request for custom Health/Mana indicators that float above NPCs instead of
+borrowing their nametag, "capable" for any entity. New `statbar` package: `StatBarOwner` (a plain
+opt-in marker, same shape as `ping.Pingable`), `StatBarProvider`/`StatBarRegistry` (open
+registration -- Nuclyus registers Health, Lyfe registers Mana), and
+`statbar.client.StatBarClientHandler` (the real rendering, reusing vanilla's own
+`SubmitNodeCollector#submitNameTag` primitive via a two-phase extract/draw hook pair -- see
+decisions.md for the full technical writeup, including a `CameraRenderState` gap `RenderLivingEvent`
+doesn't close on its own). Replaces Settlemynts' `npc.NpcHealthBar` and Lyfe's
+`mana.ManaNameplate`/`bridge.LyfeManaBridge` outright. `./gradlew build` green in Nuclyus/Lyfe/
+Settlemynts, whole-suite (13 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet
+live-tested** -- the new client rendering code has only been confirmed to compile, not to actually
+draw correctly in a real client session.

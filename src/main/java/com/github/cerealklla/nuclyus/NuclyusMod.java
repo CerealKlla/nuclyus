@@ -2,6 +2,8 @@ package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
+import com.github.cerealklla.nuclyus.statbar.HealthStatBarProvider;
+import com.github.cerealklla.nuclyus.statbar.StatBarRegistry;
 import com.github.cerealklla.nuclyus.trade.ModTradeComponents;
 
 import com.mojang.logging.LogUtils;
@@ -32,6 +34,7 @@ public class NuclyusMod {
 
     private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
         LOGGER.info("Nuclyus common setup");
+        StatBarRegistry.register(new HealthStatBarProvider());
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
