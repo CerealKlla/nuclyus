@@ -2,16 +2,19 @@ package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.menu.client.NuclyusMenuScreen;
 import com.github.cerealklla.nuclyus.ping.client.ClientPingScanner;
+import com.github.cerealklla.nuclyus.statbar.client.StatBarWorldOverlay;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import org.lwjgl.glfw.GLFW;
 
@@ -31,6 +34,11 @@ public class NuclyusModClient {
     @SubscribeEvent
     static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(OPEN_MENU);
+    }
+
+    @SubscribeEvent
+    static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
+        event.registerAboveAll(Identifier.fromNamespaceAndPath(NuclyusMod.MODID, "stat_bar_overlay"), new StatBarWorldOverlay());
     }
 
     @SubscribeEvent
