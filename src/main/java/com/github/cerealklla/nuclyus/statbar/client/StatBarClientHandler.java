@@ -76,6 +76,12 @@ public final class StatBarClientHandler {
     private StatBarClientHandler() {
     }
 
+    // Temporary diagnostic, 2026-10-21 (real report: still no bars at all after the
+    // nameTagAttachment fix shipped) -- small fixed budget so it can't spam the log forever if the
+    // player stands near a StatBarOwner for a long session. Remove once the real cause is found.
+    private static int canRenderLogBudget = 30;
+    private static int postLogBudget = 30;
+
     @SubscribeEvent
     static void onCanRenderNameTag(RenderNameTagEvent.CanRender event) {
         if (!(event.getEntity() instanceof LivingEntity living) || !(living instanceof StatBarOwner)) {
@@ -89,6 +95,11 @@ public final class StatBarClientHandler {
         }
         if (bars.isEmpty()) {
             event.getEntityRenderState().setRenderData(SNAPSHOT_KEY, null);
+            if (canRenderLogBudget > 0) {
+                canRenderLogBudget--;
+                NuclyusMod.LOGGER.info("[StatBarDiag] CanRender: entity={} providers={} bars=0 (none applicable)",
+                        living, StatBarRegistry.providers().size());
+            }
             return;
         }
         // Computed the same way vanilla itself does for a real name tag (same call, see
@@ -100,12 +111,27 @@ public final class StatBarClientHandler {
         if (attachment == null) {
             attachment = new Vec3(0.0, living.getBbHeight() + 0.5, 0.0);
         }
+        if (canRenderLogBudget > 0) {
+            canRenderLogBudget--;
+            NuclyusMod.LOGGER.info("[StatBarDiag] CanRender: entity={} bars={} attachment={} stateClass={} stateId={}",
+                    living, bars.size(), attachment, event.getEntityRenderState().getClass().getSimpleName(),
+                    System.identityHashCode(event.getEntityRenderState()));
+        }
         event.getEntityRenderState().setRenderData(SNAPSHOT_KEY, new StatBarSnapshot(bars, attachment));
     }
 
     @SubscribeEvent
     static void onRenderLivingPost(RenderLivingEvent.Post<?, ?, ?> event) {
         StatBarSnapshot snapshot = event.getRenderState().getRenderData(SNAPSHOT_KEY);
+        net.minecraft.resources.Identifier entityTypeId = event.getRenderState().entityType == null ? null
+                : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(event.getRenderState().entityType);
+        boolean looksLikeOurs = entityTypeId != null && entityTypeId.getNamespace().equals("settlemynts");
+        if (postLogBudget > 0 && (snapshot != null || looksLikeOurs)) {
+            postLogBudget--;
+            NuclyusMod.LOGGER.info("[StatBarDiag] Post: entityType={} stateClass={} stateId={} snapshotPresent={}",
+                    event.getRenderState().entityType, event.getRenderState().getClass().getSimpleName(),
+                    System.identityHashCode(event.getRenderState()), snapshot != null);
+        }
         if (snapshot == null || snapshot.bars().isEmpty()) {
             return;
         }
