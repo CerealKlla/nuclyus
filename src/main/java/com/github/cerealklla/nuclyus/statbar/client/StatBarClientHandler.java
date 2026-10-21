@@ -16,7 +16,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.context.ContextKey;
+import net.minecraft.world.entity.EntityAttachment;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -85,7 +87,20 @@ public final class StatBarClientHandler {
                 bars.add(new StatBarSnapshot.Bar(provider.current(living), provider.max(living), provider.color()));
             }
         }
-        event.getEntityRenderState().setRenderData(SNAPSHOT_KEY, bars.isEmpty() ? null : new StatBarSnapshot(bars));
+        if (bars.isEmpty()) {
+            event.getEntityRenderState().setRenderData(SNAPSHOT_KEY, null);
+            return;
+        }
+        // Computed the same way vanilla itself does for a real name tag (same call, see
+        // EntityRenderer#extractRenderState) -- but independently of whether vanilla actually
+        // decided to show one, and with a guaranteed non-null fallback for an entity type that
+        // never registered a NAME_TAG attachment point at all (see StatBarSnapshot's own doc for
+        // why this can't just reuse EntityRenderState#nameTagAttachment).
+        Vec3 attachment = living.getAttachments().getNullable(EntityAttachment.NAME_TAG, 0, living.getYRot(event.getPartialTick()));
+        if (attachment == null) {
+            attachment = new Vec3(0.0, living.getBbHeight() + 0.5, 0.0);
+        }
+        event.getEntityRenderState().setRenderData(SNAPSHOT_KEY, new StatBarSnapshot(bars, attachment));
     }
 
     @SubscribeEvent
@@ -105,7 +120,7 @@ public final class StatBarClientHandler {
         poseStack.translate(0.0F, LINE_HEIGHT, 0.0F);
         for (StatBarSnapshot.Bar bar : snapshot.bars()) {
             event.getSubmitNodeCollector().submitNameTag(
-                    poseStack, state.nameTagAttachment, 0, barText(bar), !state.isDiscrete,
+                    poseStack, snapshot.attachment(), 0, barText(bar), !state.isDiscrete,
                     state.lightCoords, state.distanceToCameraSq, CAMERA_STATE);
             poseStack.translate(0.0F, LINE_HEIGHT, 0.0F);
         }
