@@ -42,6 +42,25 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
     }
 
     /**
+     * Fixed-tab variant (added 2026-10-23) for a feature-specific tabbed screen that wants this
+     * host's tab-bar rendering/input delegation but isn't part of the shared cross-mod K menu
+     * registry -- e.g. Settlemynts' Plot Config Sign, whose tab set is computed per-open from
+     * server-sent flags, not collected from {@link NuclyusMenuRegistry}. Skips the registry
+     * entirely; {@code fixedTabs} is used as-is (already in the caller's desired order -- no {@link
+     * NuclyusMenu#order()} sort applied, since a fixed caller-built list has no registration-order
+     * ambiguity to resolve).
+     */
+    public NuclyusMenuScreen(Component title, List<NuclyusMenu> fixedTabs) {
+        super(title);
+        this.tabs = fixedTabs;
+        for (NuclyusMenu tab : tabs) {
+            tab.attachHost(this);
+        }
+        this.activeIndex = firstEnabledIndex();
+        this.initialized = true;
+    }
+
+    /**
      * Real gap found while porting Myssions' Quest Log (which pushes a {@code ConfirmScreen}/
      * {@code BugReportScreen} and restores by calling {@code setScreen} with the SAME host instance
      * passed via {@link NuclyusMenu#attachHost}, not a freshly-constructed one): vanilla calls a
