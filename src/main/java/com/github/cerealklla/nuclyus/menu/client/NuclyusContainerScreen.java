@@ -113,11 +113,24 @@ public abstract class NuclyusContainerScreen<T extends AbstractContainerMenu> ex
         return 0;
     }
 
+    private static final int ANCHORED_PANEL_MARGIN = 8;
+
     @Override
     protected void init() {
         super.init();
         this.topPos += TAB_BAR_HEIGHT;
         this.topPos += extraTopOffset();
+        if (anchorPanelTopLeft()) {
+            // Real report, 2026-10-24: "the whole window should shift up and left to make better use
+            // of the screen" -- vanilla's own default centers leftPos/topPos against the WHOLE window,
+            // which made sense before this class existed but leaves a large dead gap once a persistent
+            // top chrome (the tab bar(s)) is already eating real screen space -- centering in the
+            // window's full height/width, rather than in the actual room left after that chrome, pushed
+            // the panel down and right of where it visually belongs. Opt-in (not every subclass's panel
+            // necessarily wants this) rather than changing the default for every existing screen.
+            this.leftPos = ANCHORED_PANEL_MARGIN;
+            this.topPos = TAB_BAR_HEIGHT + extraTopOffset() + ANCHORED_PANEL_MARGIN;
+        }
         if (!tabs.isEmpty()) {
             tabs.get(activeIndex).onShown();
         }
@@ -136,6 +149,17 @@ public abstract class NuclyusContainerScreen<T extends AbstractContainerMenu> ex
      */
     protected int extraTopOffset() {
         return 0;
+    }
+
+    /**
+     * True pins the real slot panel to the top-left corner of the available space (just past the tab
+     * bar(s), {@link #ANCHORED_PANEL_MARGIN} in from each edge) instead of vanilla's own
+     * center-of-the-whole-window default. See this method's call site in {@link #init()} for why.
+     * Defaults to {@code false} -- a subclass whose panel genuinely wants to stay centered (nothing
+     * else surrounding it eating screen space) is unaffected.
+     */
+    protected boolean anchorPanelTopLeft() {
+        return false;
     }
 
     @Override
