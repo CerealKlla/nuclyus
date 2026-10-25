@@ -117,9 +117,25 @@ public abstract class NuclyusContainerScreen<T extends AbstractContainerMenu> ex
     protected void init() {
         super.init();
         this.topPos += TAB_BAR_HEIGHT;
+        this.topPos += extraTopOffset();
         if (!tabs.isEmpty()) {
             tabs.get(activeIndex).onShown();
         }
+    }
+
+    /**
+     * Extra vertical shift applied to {@link #topPos} right after the tab bar's own {@link
+     * #TAB_BAR_HEIGHT}, before any tab's {@link NuclyusMenu#onShown()} runs -- for a subclass whose
+     * active tab needs more clearance than the generic tab bar alone provides (e.g. a tab with its
+     * own second tab tier, which {@link #slotPanelTop()} would otherwise sit underneath). Must run
+     * before {@code onShown()}, not after, since a tab that adds real widgets there (via {@link
+     * WidgetHost#addMenuWidget}) positions them off {@link #slotPanelTop()}/{@link #slotPanelLeft()}
+     * at that exact point -- added 2026-10-24 rather than having a subclass override {@link #init()}
+     * itself and shift {@code topPos} after the fact, which would leave those first-shown widgets
+     * stuck at the pre-shift position. Defaults to none.
+     */
+    protected int extraTopOffset() {
+        return 0;
     }
 
     @Override
