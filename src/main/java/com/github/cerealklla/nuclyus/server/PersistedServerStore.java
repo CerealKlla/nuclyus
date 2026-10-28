@@ -43,6 +43,17 @@ public abstract class PersistedServerStore<K, V> {
     private final Function<V, K> keyOf;
 
     private volatile Map<K, V> values = Map.of();
+    // Bumped whenever `values` is reassigned to a genuinely new generation (reroll only -- the
+    // initial loadOrGenerate/mergeMissing settle into their final form before any gameplay code can
+    // possibly run, so there's nothing for an external cache to miss there). Added 2026-10-28 so a
+    // downstream consumer (e.g. Settlemynts' LyfeCraftingBridge#getAllRecipes) can safely cache this
+    // store's mapped-out contents instead of recomputing them on every call, without going stale if
+    // an admin reroll ever happens on a live server.
+    private volatile int generation = 0;
+
+    public final int generation() {
+        return this.generation;
+    }
 
     protected PersistedServerStore(String fileName, Codec<V> entryCodec, Function<V, K> keyOf) {
         this.fileName = fileName;
@@ -98,6 +109,7 @@ public abstract class PersistedServerStore<K, V> {
     /** Forces a brand-new random generation, overwriting the cached file. */
     public final void reroll(MinecraftServer server) {
         values = generateAndSave(server.getFile(fileName));
+        this.generation++;
         onLoaded();
     }
 
