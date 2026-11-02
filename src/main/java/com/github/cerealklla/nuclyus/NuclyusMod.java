@@ -1,5 +1,6 @@
 package com.github.cerealklla.nuclyus;
 
+import com.github.cerealklla.nuclyus.chunkload.ChunkClaims;
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
 import com.github.cerealklla.nuclyus.statbar.HealthStatBarProvider;
@@ -29,6 +30,7 @@ public class NuclyusMod {
     public NuclyusMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
+        modEventBus.addListener(ChunkClaims::registerController);
         ModTradeComponents.DATA_COMPONENTS.register(modEventBus);
     }
 
