@@ -42,6 +42,7 @@ public abstract class PersistedServerStore<K, V> {
     private final Codec<List<V>> listCodec;
     private final Function<V, K> keyOf;
 
+    private volatile Path file;
     private volatile Map<K, V> values = Map.of();
     // Bumped whenever `values` is reassigned to a genuinely new generation (reroll only -- the
     // initial loadOrGenerate/mergeMissing settle into their final form before any gameplay code can
@@ -70,6 +71,7 @@ public abstract class PersistedServerStore<K, V> {
 
     public final void loadOrGenerate(MinecraftServer server) {
         Path file = server.getFile(fileName);
+        this.file = file;
         if (Files.exists(file)) {
             values = load(file).map(loaded -> mergeMissing(loaded, file)).orElseGet(() -> generateAndSave(file));
         } else {
@@ -108,7 +110,9 @@ public abstract class PersistedServerStore<K, V> {
 
     /** Forces a brand-new random generation, overwriting the cached file. */
     public final void reroll(MinecraftServer server) {
-        values = generateAndSave(server.getFile(fileName));
+        Path file = server.getFile(fileName);
+        this.file = file;
+        values = generateAndSave(file);
         this.generation++;
         onLoaded();
     }
@@ -119,6 +123,25 @@ public abstract class PersistedServerStore<K, V> {
 
     public final Map<K, V> all() {
         return Map.copyOf(values);
+    }
+
+    /**
+     * Writes/overwrites one entry and persists immediately -- added 2026-11-03 for Audyble's Phase 5b
+     * NPC identity/relationship stores, the first consumers of this class that need live incremental
+     * writes at runtime rather than "generate once at boot, read-only after" ({@link #reroll} was
+     * previously the only way to ever change a store's contents post-boot, and that replaces the whole
+     * set). Requires {@link #loadOrGenerate}/{@link #reroll} to have run at least once first (both set
+     * the backing file path) -- a store that's never been loaded has nothing to persist to yet, which
+     * can't happen in practice since every store is loaded at server start before any gameplay code
+     * can reach this. Bumps {@link #generation} the same way {@link #reroll} does, so a downstream
+     * cache keyed on it stays correct either way.
+     */
+    public final synchronized void put(K key, V value) {
+        Map<K, V> updated = new LinkedHashMap<>(values);
+        updated.put(key, value);
+        values = updated;
+        this.generation++;
+        save(file, updated);
     }
 
     private Map<K, V> generateAndSave(Path file) {
