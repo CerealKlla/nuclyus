@@ -10,8 +10,10 @@ import com.github.cerealklla.nuclyus.statbar.StatBarRegistry;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -50,6 +52,11 @@ import org.joml.Vector4f;
  * multiply the two separately), then drawn as a plain {@code GuiGraphicsExtractor#fill} rectangle
  * pair (background + proportional foreground) -- first-pass visual, functional before polished,
  * same precedent as this suite's other HUD elements.
+ *
+ * <p><b>{@link StatBarOwner#displayName()} added 2026-11-05</b> -- drawn as plain centered text
+ * directly above the stacked bars, same projection/occlusion math already computed for the bars
+ * themselves (no separate pass). An owner with a name but zero currently-applicable stat bars (e.g.
+ * full health, no Mana) still shows -- the early-exit below now only skips an owner with neither.
  */
 public final class StatBarWorldOverlay implements GuiLayer {
 
@@ -75,7 +82,7 @@ public final class StatBarWorldOverlay implements GuiLayer {
         int guiHeight = guiGraphics.guiHeight();
 
         for (Entity entity : level.entitiesForRendering()) {
-            if (!(entity instanceof LivingEntity living) || !(living instanceof StatBarOwner)) {
+            if (!(entity instanceof LivingEntity living) || !(living instanceof StatBarOwner owner)) {
                 continue;
             }
             if (living.distanceToSqr(minecraft.player) > MAX_DISTANCE_SQ) {
@@ -87,7 +94,8 @@ public final class StatBarWorldOverlay implements GuiLayer {
                     applicable.add(provider);
                 }
             }
-            if (applicable.isEmpty()) {
+            Component name = owner.displayName();
+            if (applicable.isEmpty() && name == null) {
                 continue;
             }
 
@@ -116,11 +124,23 @@ public final class StatBarWorldOverlay implements GuiLayer {
             int screenY = Math.round((1.0F - (ndcY * 0.5F + 0.5F)) * guiHeight);
 
             int barTop = screenY;
+            if (name != null) {
+                barTop = drawName(guiGraphics, minecraft.font, screenX, barTop, name);
+            }
             for (StatBarProvider provider : applicable) {
                 drawBar(guiGraphics, screenX, barTop, provider.current(living), provider.max(living), provider.color());
                 barTop += BAR_HEIGHT + BAR_SPACING;
             }
         }
+    }
+
+    /** @return the Y to resume drawing at, just below the name line. */
+    private static int drawName(GuiGraphicsExtractor guiGraphics, Font font, int centerX, int top, Component name) {
+        String text = name.getString();
+        int width = font.width(text);
+        guiGraphics.fill(centerX - width / 2 - 2, top, centerX + width / 2 + 2, top + font.lineHeight, BACKGROUND_COLOR);
+        guiGraphics.text(font, text, centerX - width / 2, top + 1, 0xFFFFFFFF);
+        return top + font.lineHeight + BAR_SPACING;
     }
 
     private static void drawBar(GuiGraphicsExtractor guiGraphics, int centerX, int top, float current, float max, int color) {
