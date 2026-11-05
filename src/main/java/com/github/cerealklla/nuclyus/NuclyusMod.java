@@ -1,6 +1,7 @@
 package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.chunkload.ChunkClaims;
+import com.github.cerealklla.nuclyus.config.NuclyusConfig;
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
 import com.github.cerealklla.nuclyus.statbar.HealthStatBarProvider;
@@ -12,6 +13,7 @@ import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.slf4j.Logger;
 
@@ -32,6 +34,7 @@ public class NuclyusMod {
         modEventBus.addListener(this::registerPayloads);
         modEventBus.addListener(ChunkClaims::registerController);
         ModTradeComponents.DATA_COMPONENTS.register(modEventBus);
+        modContainer.registerConfig(ModConfig.Type.SERVER, NuclyusConfig.SPEC);
     }
 
     private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
