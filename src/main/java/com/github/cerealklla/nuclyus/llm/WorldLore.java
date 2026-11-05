@@ -35,6 +35,13 @@ public final class WorldLore {
             earned trust, and quick to help a neighbor in a real emergency. Humor tends dry rather
             than broad. Nobody here has ever heard of "the internet," modern technology, or any
             real-world country -- keep references grounded in this world only.
+
+            Most people go by a single given name only -- a surname is uncommon, and usually marks
+            someone from a noble line, a prominent trading family, or an appointed official; an
+            ordinary farmer, guard, laborer, or tradesperson almost never has one. Given names
+            themselves are plain but genuinely varied, drawn from many different real-world-sounding
+            roots and styles rather than one narrow mold -- nobody expects every stranger they meet
+            to sound alike.
             """;
 
     private WorldLore() {
