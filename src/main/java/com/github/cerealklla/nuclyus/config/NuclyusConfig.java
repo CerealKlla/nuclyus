@@ -29,6 +29,18 @@ public final class NuclyusConfig {
                     + "qwen2.5:7b, phi4")
             .define("ollamaModel", "llama3.1:8b");
 
+    public static final ModConfigSpec.ConfigValue<String> KOKORO_BASE_URL = BUILDER
+            .comment("Base URL of a local Kokoro-82M TTS server exposing an OpenAI-compatible "
+                    + "/v1/audio/speech endpoint (e.g. the kokoro-fastapi project), e.g. "
+                    + "http://127.0.0.1:8880 -- use a literal IPv4 address, not 'localhost' (see "
+                    + "ollamaBaseUrl's own comment for why). Moved here from Audyble's own "
+                    + "kokoroBaseUrl 2026-11-06, same reasoning as ollamaBaseUrl's own move the day "
+                    + "before -- only the base URL (infrastructure: where's the server) moved; which "
+                    + "voice name to use for which NPC (domain logic) stays wherever the caller lives, "
+                    + "e.g. Audyble's own kokoroVoiceMale/kokoroVoiceFemale. Leave blank to disable "
+                    + "every TTS-dependent feature across the suite.")
+            .define("kokoroBaseUrl", "http://127.0.0.1:8880");
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private NuclyusConfig() {

@@ -132,6 +132,17 @@ mechanism can't trigger by design. `./gradlew build` green, whole-suite (12 mods
 suite yet, and the new client-side scanning code hasn't been exercised by a real `runClient`
 session** -- ready whenever a future feature wants it.
 
+**Kokoro TTS client moved here too; new `api.Nuclyus` facade, 2026-11-06** (see
+[context/decisions.md](context/decisions.md)) -- explicit user direction: "the LLM should be
+completely separate from the TTS, both accessible independently from the Nuclyus API." `tts.
+KokoroTtsClient` moved here from Audyble's own (now-deleted) copy, zero behavior change; only the
+Kokoro server's base URL (infrastructure) moved into `NuclyusConfig#KOKORO_BASE_URL` -- which voice
+to use for which NPC (domain logic) stays with the caller (Audyble's own `kokoroVoiceMale`/
+`kokoroVoiceFemale`). New `api.Nuclyus` (`chat`/`isLlmConfigured`/`speak`/`isTtsConfigured`) is this
+mod's first real `api.*` facade; Audyble and Settlemynts both now call through it instead of
+`llm.OllamaClient`/`tts.KokoroTtsClient` directly. `./gradlew build` green in all three repos. **Not
+yet live-tested.**
+
 **Generic floating stat-bar system, 2026-10-21** (see [context/decisions.md](context/decisions.md))
 -- explicit user request for custom Health/Mana indicators that float above NPCs instead of
 borrowing their nametag, "capable" for any entity. New `statbar` package: `StatBarOwner` (a plain
