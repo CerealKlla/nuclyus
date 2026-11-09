@@ -9,8 +9,10 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 /**
  * Server-side half of the Pingable pipeline -- receives a {@link PingCandidatesPayload} from a
  * player's own {@code client.ClientPingScanner}, re-resolves every reported position/entity id
- * against this server's own real state, re-checks real distance (never trusts the client's claim
- * blindly), and calls {@link Pingable#onPing} on whatever survives both checks.
+ * against this server's own real state, re-checks real distance against that specific instance's own
+ * {@link Pingable#radiusBlocks} (never trusts the client's claim blindly, and never checks against
+ * any single shared radius -- see that method's own doc for why), and calls {@link Pingable#onPing}
+ * on whatever survives both checks.
  */
 public final class PingDispatcher {
 
@@ -21,14 +23,14 @@ public final class PingDispatcher {
         if (!(context.player() instanceof ServerPlayer player) || !(player.level() instanceof ServerLevel level)) {
             return;
         }
-        double maxDistSq = (double) PingConstants.RADIUS_BLOCKS * PingConstants.RADIUS_BLOCKS;
 
         for (BlockPos pos : payload.blockEntityPositions()) {
             if (!(level.getBlockEntity(pos) instanceof Pingable pingable)) {
                 continue;
             }
             double distSq = player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (distSq > maxDistSq) {
+            double ownRadius = pingable.radiusBlocks();
+            if (distSq > ownRadius * ownRadius) {
                 continue;
             }
             pingable.onPing(new PingPacket(player, Math.sqrt(distSq)));
@@ -40,7 +42,8 @@ public final class PingDispatcher {
                 continue;
             }
             double distSq = player.distanceToSqr(entity);
-            if (distSq > maxDistSq) {
+            double ownRadius = pingable.radiusBlocks();
+            if (distSq > ownRadius * ownRadius) {
                 continue;
             }
             pingable.onPing(new PingPacket(player, Math.sqrt(distSq)));

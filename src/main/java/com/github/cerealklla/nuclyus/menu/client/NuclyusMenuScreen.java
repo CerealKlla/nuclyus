@@ -37,6 +37,21 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
     private int activeIndex;
     private boolean initialized;
 
+    /** See {@link #requestInitialTab}'s own doc -- consumed once, inside {@link #init()}, then cleared. */
+    private static String pendingInitialTabTitle;
+
+    /**
+     * Requests that the next freshly-opened shared K-menu (the plain no-arg constructor path) start
+     * on the tab whose {@link NuclyusMenu#title()} string-matches {@code tabTitle}, instead of the
+     * first enabled one -- added 2026-11-06 for Arryval's new quest-offer-review prompt ("Press
+     * &lt;button&gt; to review quest offer" should open the K menu straight to Quests, not whichever
+     * tab happens to sort first). A no-op if no currently-registered, currently-enabled tab has that
+     * exact title by the time the menu actually opens.
+     */
+    public static void requestInitialTab(String tabTitle) {
+        pendingInitialTabTitle = tabTitle;
+    }
+
     public NuclyusMenuScreen() {
         super(Component.literal("Menu"));
     }
@@ -79,6 +94,15 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
                 tab.attachHost(this);
             }
             activeIndex = firstEnabledIndex();
+            if (pendingInitialTabTitle != null) {
+                for (int i = 0; i < tabs.size(); i++) {
+                    if (tabs.get(i).enabled() && tabs.get(i).title().getString().equals(pendingInitialTabTitle)) {
+                        activeIndex = i;
+                        break;
+                    }
+                }
+                pendingInitialTabTitle = null;
+            }
             initialized = true;
         }
         // Vanilla's own init() wrapper already cleared this screen's widget list before calling this

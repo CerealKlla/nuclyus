@@ -104,8 +104,19 @@ public final class StatBarWorldOverlay implements GuiLayer {
             // terrain?" -- a screen-space overlay has no inherent depth test against the world at
             // all (that's the whole reason it sidesteps the render-state-identity problem), so
             // without this it draws through walls unconditionally. A plain block raycast from the
-            // camera to the bar's own anchor point is enough -- MISS means a clear line of sight.
-            if (level.clip(new ClipContext(cameraPos, worldPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player))
+            // camera to a real point on the entity -- MISS means a clear line of sight.
+            //
+            // Real bug, found live 2026-11-07: "it's still removing name tags when I walk up to NPCs
+            // which have 'G' menus" -- the raycast target used to be the elevated nameplate ANCHOR
+            // point (bbHeight + 0.3 above the entity's feet), not a real point on the entity itself.
+            // Standing close to an NPC inside a shop stall/plot structure (exactly the "G" menu case)
+            // routinely has a counter, awning, or low ceiling directly over the NPC's own head -- the
+            // entity is plainly visible, but that elevated anchor point pokes above/through the real
+            // obstruction, occluding the whole bar+name even though nothing is actually hiding the
+            // NPC. Raycasting to the entity's real eye position instead (the same point its own
+            // rendered model is visibly NOT occluded at) fixes this -- the bar/name still DRAW at the
+            // elevated anchor, only the visibility check moved.
+            if (level.clip(new ClipContext(cameraPos, living.getEyePosition(partialTick), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player))
                     .getType() != HitResult.Type.MISS) {
                 continue;
             }
@@ -117,11 +128,20 @@ public final class StatBarWorldOverlay implements GuiLayer {
             }
             float ndcX = clip.x / clip.w;
             float ndcY = clip.y / clip.w;
-            if (ndcX < -1.2F || ndcX > 1.2F || ndcY < -1.2F || ndcY > 1.2F) {
-                continue; // Well outside the screen.
-            }
+            // Real bug, found live 2026-11-07: "as soon as I walk up right next to a named NPC their
+            // name goes away" -- this used to skip drawing entirely once the projected point fell
+            // outside a fixed +/-1.2 NDC margin. The anchor point sits at a FIXED world-space height
+            // above the entity (bbHeight + 0.3), so at close range that same offset subtends a much
+            // larger angle from the camera and gets pushed past the margin almost immediately --
+            // vanishing exactly when standing right next to someone, not when genuinely far off to
+            // the side. Clamping the final screen position (so it pins to the edge instead of being
+            // skipped) is the correct fix -- a 2D HUD draw doesn't actually need the point to be
+            // inside the 3D frustum at all, only "behind the camera" (clip.w above) is a real reason
+            // to skip it outright.
             int screenX = Math.round((ndcX * 0.5F + 0.5F) * guiWidth);
             int screenY = Math.round((1.0F - (ndcY * 0.5F + 0.5F)) * guiHeight);
+            screenX = Math.max(BAR_WIDTH, Math.min(guiWidth - BAR_WIDTH, screenX));
+            screenY = Math.max(minecraft.font.lineHeight, Math.min(guiHeight - minecraft.font.lineHeight, screenY));
 
             int barTop = screenY;
             if (name != null) {
