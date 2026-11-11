@@ -170,6 +170,22 @@ public abstract class PersistedServerStore<K, V> {
         save(file, updated);
     }
 
+    /** Removes one entry and persists immediately, if present -- a no-op otherwise. Added
+     *  2026-11-11 for {@code tag.TagRegistry} (approving/denying a pending tag request removes it
+     *  from the pending store), the first consumer of this class that ever needs to delete a single
+     *  entry rather than just upsert one. Same incremental-extension shape {@link #put} itself
+     *  followed when it was added. */
+    public final synchronized void remove(K key) {
+        if (!values.containsKey(key)) {
+            return;
+        }
+        Map<K, V> updated = new LinkedHashMap<>(values);
+        updated.remove(key);
+        values = updated;
+        this.generation++;
+        save(file, updated);
+    }
+
     private Map<K, V> generateAndSave(Path file) {
         Map<K, V> generated = generate();
         save(file, generated);

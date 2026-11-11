@@ -2,9 +2,13 @@ package com.github.cerealklla.nuclyus.api;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import com.github.cerealklla.nuclyus.config.NuclyusConfig;
 import com.github.cerealklla.nuclyus.llm.OllamaClient;
+import com.github.cerealklla.nuclyus.tag.TagApprovalHooks;
+import com.github.cerealklla.nuclyus.tag.TagApprovalListener;
+import com.github.cerealklla.nuclyus.tag.TagRegistry;
 import com.github.cerealklla.nuclyus.tts.KokoroTtsClient;
 import com.github.cerealklla.nuclyus.welcome.WelcomeBookContent;
 
@@ -59,5 +63,49 @@ public final class Nuclyus {
      *  which seeds this straight into the tutorial WyrldRecipe's own common-loot pool. */
     public static ItemStack createWelcomeBook() {
         return WelcomeBookContent.build();
+    }
+
+    /**
+     * The shared tag vocabulary -- see {@code tag.TagRegistry}'s own doc for why this lives here
+     * rather than in any one feature mod. Added 2026-11-11 for TinyWyrlds' WyrldPrint Tags feature,
+     * explicit user spec: "we should store the list of tag types in Nuclyus, and leverage them in
+     * TinyWyrlds so that we can use the same tags in Blueprynts later and they'll match."
+     */
+    public static List<String> approvedTags() {
+        return TagRegistry.approvedTags();
+    }
+
+    /** Tag text only, for display/edit purposes -- see {@code requestCustomTag} for who requested each one. */
+    public static List<String> pendingTags() {
+        return TagRegistry.pendingTags();
+    }
+
+    public static boolean isTagApproved(String tag) {
+        return TagRegistry.isApproved(tag);
+    }
+
+    /** No-ops if {@code tag} is already approved or already pending. */
+    public static void requestCustomTag(String tag, UUID requestedBy) {
+        TagRegistry.requestCustomTag(tag, requestedBy);
+    }
+
+    /** {@code approvedTag} may equal {@code originalTag} (approved as-is) or differ (an admin
+     *  corrected it) -- notifies every registered {@link TagApprovalListener} either way, so a
+     *  caller like TinyWyrlds can retroactively rewrite its own already-tagged content and/or
+     *  notify the requester. Nuclyus does nothing else with the approval itself. */
+    public static void approveTag(String originalTag, String approvedTag) {
+        TagRegistry.approve(originalTag, approvedTag);
+    }
+
+    /** Removes {@code tag} from the pending queue only -- no listener callback, nothing retroactive. */
+    public static void denyTag(String tag) {
+        TagRegistry.deny(tag);
+    }
+
+    /** A caller registers from its own constructor, gated behind {@code ModList.isLoaded} like every
+     *  other optional-consumer registration in this suite -- registration order across mods doesn't
+     *  matter. */
+    public static void registerTagApprovalListener(TagApprovalListener listener) {
+        TagApprovalHooks.register(listener);
     }
 }
