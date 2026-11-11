@@ -6,6 +6,9 @@ import java.util.List;
 import com.github.cerealklla.nuclyus.config.NuclyusConfig;
 import com.github.cerealklla.nuclyus.llm.OllamaClient;
 import com.github.cerealklla.nuclyus.tts.KokoroTtsClient;
+import com.github.cerealklla.nuclyus.welcome.WelcomeBookContent;
+
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Stable cross-mod facade for Nuclyus's two independent AI capabilities -- the LLM (Ollama) and TTS
@@ -48,5 +51,13 @@ public final class Nuclyus {
      */
     public static byte[] speak(String voice, String text) throws IOException, InterruptedException {
         return new KokoroTtsClient(NuclyusConfig.KOKORO_BASE_URL.get(), voice).synthesize(text);
+    }
+
+    /** Builds a fresh "Kyngdoms, A History" written book -- one section per currently-loaded mod,
+     *  see {@link WelcomeBookContent}'s own doc for why this lives here rather than in any one
+     *  feature mod. Added 2026-11-11 for Arryval's {@code onboarding.TutorialRecipeBootstrap},
+     *  which seeds this straight into the tutorial WyrldRecipe's own common-loot pool. */
+    public static ItemStack createWelcomeBook() {
+        return WelcomeBookContent.build();
     }
 }
