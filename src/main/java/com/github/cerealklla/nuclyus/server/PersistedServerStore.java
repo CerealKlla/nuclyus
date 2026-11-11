@@ -21,15 +21,30 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
 
 /**
- * Generic version of the "generate once on first boot, persist to a JSON file in the server's own
- * working directory via Gson+Codec, reuse thereafter" pattern -- pulled out of three near-identical
- * copies in Lyfe ({@code craft.ServerRecipeStore}, {@code cook.ServerFoodRecipeStore}, {@code
- * socket.ServerRunewordStore}). {@code MinecraftServer#getFile(String)} resolves to the process's
- * own working directory (a sibling of {@code server.properties}), not any single world's save path
- * -- a world/map wipe leaves a subclass's file untouched, while a real server wipe (deleting
- * everything alongside the world folders) naturally takes it with it too.
+ * Generic version of the "generate once on first boot, persist to a JSON file via Gson+Codec, reuse
+ * thereafter" pattern -- pulled out of three near-identical copies in Lyfe ({@code
+ * craft.ServerRecipeStore}, {@code cook.ServerFoodRecipeStore}, {@code socket.ServerRunewordStore}).
+ * By default, {@code MinecraftServer#getFile(String)} resolves to the process's own working
+ * directory (a sibling of {@code server.properties}), not any single world's save path -- a
+ * world/map wipe leaves a subclass's file untouched, while a real server wipe (deleting everything
+ * alongside the world folders) naturally takes it with it too. This is the right scope for data that
+ * is genuinely world-independent (recipes, runewords) -- exactly this class's original three
+ * consumers.
+ *
+ * <p><b>{@code worldScoped}, added 2026-11-09</b>: real live bug, found via Arryval's starting-
+ * settlement picker -- that store's own content (which real villages are nearest *this world's*
+ * origin, for *this world's* seed) is fundamentally tied to one specific world, not the game
+ * instance as a whole, so the instance-scoped default silently kept serving one world's discovered
+ * settlement coordinates to every *later*, differently-seeded world created in the same instance/
+ * install -- exactly the "nothing here, wrong coordinates entirely" a player hit after repeatedly
+ * recreating their singleplayer world for testing. Passing {@code true} resolves the backing file
+ * under {@code server.getWorldPath(LevelResource.ROOT)} instead, so a new world (a new save folder)
+ * gets its own fresh file and fresh {@link #generate()} run, same as every other per-world save
+ * naturally would. Defaults to {@code false} (the original, still-correct behavior) for every
+ * existing consumer -- nothing about Lyfe's three stores changes.
  *
  * <p>A subclass provides the entry codec, how to derive each entry's key, the file name, and the
  * actual generation logic; this class owns load/save/reroll and the in-memory cache.
@@ -41,6 +56,7 @@ public abstract class PersistedServerStore<K, V> {
     private final String fileName;
     private final Codec<List<V>> listCodec;
     private final Function<V, K> keyOf;
+    private final boolean worldScoped;
 
     private volatile Path file;
     private volatile Map<K, V> values = Map.of();
@@ -57,9 +73,15 @@ public abstract class PersistedServerStore<K, V> {
     }
 
     protected PersistedServerStore(String fileName, Codec<V> entryCodec, Function<V, K> keyOf) {
+        this(fileName, entryCodec, keyOf, false);
+    }
+
+    /** See this class's own doc for what {@code worldScoped} means. */
+    protected PersistedServerStore(String fileName, Codec<V> entryCodec, Function<V, K> keyOf, boolean worldScoped) {
         this.fileName = fileName;
         this.listCodec = entryCodec.listOf();
         this.keyOf = keyOf;
+        this.worldScoped = worldScoped;
     }
 
     /** Builds a brand-new generated set -- called only when no on-disk file exists yet, or on a forced {@link #reroll}. */
@@ -69,8 +91,12 @@ public abstract class PersistedServerStore<K, V> {
     protected void onLoaded() {
     }
 
+    private Path resolveFile(MinecraftServer server) {
+        return worldScoped ? server.getWorldPath(LevelResource.ROOT).resolve(fileName) : server.getFile(fileName);
+    }
+
     public final void loadOrGenerate(MinecraftServer server) {
-        Path file = server.getFile(fileName);
+        Path file = resolveFile(server);
         this.file = file;
         if (Files.exists(file)) {
             values = load(file).map(loaded -> mergeMissing(loaded, file)).orElseGet(() -> generateAndSave(file));
@@ -110,7 +136,7 @@ public abstract class PersistedServerStore<K, V> {
 
     /** Forces a brand-new random generation, overwriting the cached file. */
     public final void reroll(MinecraftServer server) {
-        Path file = server.getFile(fileName);
+        Path file = resolveFile(server);
         this.file = file;
         values = generateAndSave(file);
         this.generation++;

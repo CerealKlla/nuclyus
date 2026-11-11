@@ -130,7 +130,8 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
      * itself.
      */
     public Rect2i contentArea() {
-        return new Rect2i(0, TAB_BAR_HEIGHT, width, Math.max(0, height - TAB_BAR_HEIGHT));
+        int barHeight = tabBarHeight(tabRects());
+        return new Rect2i(0, barHeight, width, Math.max(0, height - barHeight));
     }
 
     /**
@@ -157,8 +158,20 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
      * into the neighboring tab's whenever the font rendered larger relative to the window (a higher
      * GUI Scale at the same resolution) -- confirmed by comparing two screenshots at different GUI
      * Scales, one overlapping/truncated, one fine. Each tab is now sized to its own text width
-     * (plus padding); the last tab still absorbs any remaining slack so the bar still spans the full
-     * width with no background gap, exactly as before.
+     * (plus padding); the last tab in each row still absorbs any remaining slack so that row spans
+     * the full width with no background gap, exactly as before.
+     *
+     * <p><b>Wraps onto further rows, 2026-11-09</b> -- real live report (screenshot): with 11 real
+     * tabs now registered (up from the handful that existed when the fix above first shipped), the
+     * single-row layout simply ran off the right edge of the window at full screen width, with no
+     * wrapping/scrolling/shrinking of any kind -- "Spells" (and part of "Rune Codex") were pushed
+     * fully off-screen and unreachable, not just visually cramped. Greedily packs tabs left to right,
+     * starting a new row the moment the next tab wouldn't fit (a single tab wider than the whole
+     * window still goes on its own row rather than looping forever) -- {@link #tabBarHeight} derives
+     * the real total bar height from however many rows this actually produced, so {@link
+     * #contentArea()}, the background fill, and the tab-bar click hit-test all stay in sync with
+     * whatever row count the current window width/tab count/GUI Scale happens to need, rather than
+     * assuming a fixed one-row height.
      */
     private Rect2i[] tabRects() {
         Rect2i[] rects = new Rect2i[tabs.size()];
@@ -166,19 +179,46 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
             return rects;
         }
         int[] widths = new int[tabs.size()];
-        int sum = 0;
         for (int i = 0; i < tabs.size(); i++) {
             widths[i] = font.width(tabs.get(i).title()) + TAB_PADDING * 2;
-            sum += widths[i];
         }
-        int lastIndex = widths.length - 1;
-        widths[lastIndex] = Math.max(widths[lastIndex], width - (sum - widths[lastIndex]));
         int x = 0;
-        for (int i = 0; i < widths.length; i++) {
-            rects[i] = new Rect2i(x, 0, widths[i], TAB_BAR_HEIGHT);
+        int row = 0;
+        int rowStart = 0;
+        for (int i = 0; i < tabs.size(); i++) {
+            if (i > rowStart && x + widths[i] > width) {
+                stretchLastInRow(rects, widths, rowStart, i - 1);
+                row++;
+                rowStart = i;
+                x = 0;
+            }
+            rects[i] = new Rect2i(x, row * TAB_BAR_HEIGHT, widths[i], TAB_BAR_HEIGHT);
             x += widths[i];
         }
+        stretchLastInRow(rects, widths, rowStart, tabs.size() - 1);
         return rects;
+    }
+
+    /** Stretches {@code rects[rowEnd]} to absorb whatever width is left over in its own row (indices {@code rowStart..rowEnd}), same "no background gap" behavior {@link #tabRects()}'s own doc already describes, just scoped per row instead of to the single last tab overall. */
+    private void stretchLastInRow(Rect2i[] rects, int[] widths, int rowStart, int rowEnd) {
+        int sum = 0;
+        for (int i = rowStart; i <= rowEnd; i++) {
+            sum += widths[i];
+        }
+        int extra = width - sum;
+        if (extra > 0) {
+            Rect2i last = rects[rowEnd];
+            rects[rowEnd] = new Rect2i(last.getX(), last.getY(), last.getWidth() + extra, last.getHeight());
+        }
+    }
+
+    /** The real total tab-bar height for the current layout -- however many rows {@link #tabRects()} actually produced, not a fixed one-row assumption. */
+    private int tabBarHeight(Rect2i[] rects) {
+        int maxY = 0;
+        for (Rect2i rect : rects) {
+            maxY = Math.max(maxY, rect.getY());
+        }
+        return maxY + TAB_BAR_HEIGHT;
     }
 
     private void switchTo(int index) {
@@ -199,8 +239,8 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 
-        graphics.fill(0, 0, width, TAB_BAR_HEIGHT, TAB_BAR_BG);
         Rect2i[] rects = tabRects();
+        graphics.fill(0, 0, width, tabBarHeight(rects), TAB_BAR_BG);
         for (int i = 0; i < tabs.size(); i++) {
             NuclyusMenu tab = tabs.get(i);
             Rect2i rect = rects[i];
@@ -225,8 +265,9 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.y() < TAB_BAR_HEIGHT) {
-            Rect2i[] rects = tabRects();
+        Rect2i[] tabClickRects = tabRects();
+        if (event.y() < tabBarHeight(tabClickRects)) {
+            Rect2i[] rects = tabClickRects;
             for (int i = 0; i < tabs.size(); i++) {
                 Rect2i rect = rects[i];
                 if (rect.contains((int) event.x(), (int) event.y()) && tabs.get(i).enabled()) {
