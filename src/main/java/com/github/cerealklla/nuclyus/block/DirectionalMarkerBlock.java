@@ -108,16 +108,28 @@ public class DirectionalMarkerBlock extends FaceAttachedHorizontalDirectionalBlo
 
     /** Snow-layer-thin in every mode: a flat slab resting on the ground for FLOOR, hanging from
      *  the ceiling for CEILING, or flush against whichever wall face for WALL -- never a full
-     *  cube, same intent as the original's {@code noOcclusion()}. */
+     *  cube, same intent as the original's {@code noOcclusion()}.
+     *
+     *  <p>Real bug caught before ever being live-tested, same mistake class as the original
+     *  TinyWyrlds arrow's first (screenshot-rejected) attempt: the WALL case here used to hug the
+     *  wrong side for every direction. {@link #getStateForPlacement} sets {@code FACING =
+     *  direction.getOpposite()} where {@code direction} is where the player was looking (i.e.
+     *  toward the clicked wall), so the real backing wall sits on the {@code FACING.getOpposite()}
+     *  side, not the {@code FACING} side -- confirmed against vanilla's own {@code LeverBlock}
+     *  (its base shape, {@code Block.boxZ(6,8,10,16)}, hugs z=16/south for its default
+     *  {@code FACING=NORTH} state, i.e. the side *opposite* facing, exactly this rule). Each case
+     *  below now hugs the side opposite its own {@code FACING}, protruding toward {@code FACING}
+     *  itself, matching that. */
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return switch (state.getValue(FACE)) {
             case FLOOR -> thinBox(0, 0, 0, 16, THICKNESS, 16);
             case CEILING -> thinBox(0, 16 - THICKNESS, 0, 16, 16, 16);
             case WALL -> switch (state.getValue(FACING)) {
-                case SOUTH -> thinBox(0, 0, 16 - THICKNESS, 16, 16, 16);
-                case WEST -> thinBox(0, 0, 0, THICKNESS, 16, 16);
-                case EAST -> thinBox(16 - THICKNESS, 0, 0, 16, 16, 16);
+                case NORTH -> thinBox(0, 0, 16 - THICKNESS, 16, 16, 16);
+                case SOUTH -> thinBox(0, 0, 0, 16, 16, THICKNESS);
+                case EAST -> thinBox(0, 0, 0, THICKNESS, 16, 16);
+                case WEST -> thinBox(16 - THICKNESS, 0, 0, 16, 16, 16);
                 default -> thinBox(0, 0, 0, 16, 16, THICKNESS);
             };
         };
