@@ -171,5 +171,18 @@ piggyback a crossing manually -- consumed the same day by Settlemynts' `GuardRet
 (recovering an already-stranded guard) and Caryvan's `WagonMountPortalFollowListener` (so its own
 direct cross-dimension calls aren't wrongly cancelled). Does not affect TinyWyrld entrances/exits or
 End Gateways -- neither is a `NetherPortalBlock`/`EndPortalBlock`. `./gradlew build` green in all
-three repos, whole-suite (17 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet
+three repos, whole-suite (17 mods) rebuild + `runServer` boot-smoke-test clean. **Confirmed the rule
+is absolute** (no wild mob or other non-player entity can cross either, by construction) --
+Settlemynts' guard-recovery goal was rebuilt into a direct, portal-free recall teleport the same day
+after a follow-up instruction caught it as the one real violation. **Deployed to Production, Build
+403.** Live confirmation (an actual player crossing, a guard recalling, a wagon rig crossing with
+its driver) still pending.
+
+**"Right Click to use Portal" HUD prompt, same day** (see
+[context/decisions.md](context/decisions.md)) -- explicit follow-up request: standing in a portal
+now does nothing visible at all, so a prompt was needed. New `portal.client.PortalPromptOverlay`
+shows the hint above the hotbar whenever the player's own crosshair (`Minecraft#hitResult`) is
+targeting a real portal block -- the exact same condition a right click would act on, confirmed by
+construction rather than duplicated logic. Nuclyus's first-ever lang file. `./gradlew build` green,
+whole-suite (17 mods) rebuild clean, `runServer`/`runClient` both boot-smoke-tested clean. **Not yet
 live-tested or deployed.**
