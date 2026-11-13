@@ -6,12 +6,17 @@ import java.util.UUID;
 
 import com.github.cerealklla.nuclyus.config.NuclyusConfig;
 import com.github.cerealklla.nuclyus.llm.OllamaClient;
+import com.github.cerealklla.nuclyus.portal.PortalAutoTeleportBypass;
+import com.github.cerealklla.nuclyus.portal.PortalCrossing;
 import com.github.cerealklla.nuclyus.tag.TagApprovalHooks;
 import com.github.cerealklla.nuclyus.tag.TagApprovalListener;
 import com.github.cerealklla.nuclyus.tag.TagRegistry;
 import com.github.cerealklla.nuclyus.tts.KokoroTtsClient;
 import com.github.cerealklla.nuclyus.welcome.WelcomeBookContent;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -107,5 +112,33 @@ public final class Nuclyus {
      *  matter. */
     public static void registerTagApprovalListener(TagApprovalListener listener) {
         TagApprovalHooks.register(listener);
+    }
+
+    /**
+     * Manually performs a real Nether/End portal crossing for {@code entity} at {@code portalPos} --
+     * the replacement for vanilla's own automatic per-tick crossing, which {@code
+     * NuclyusConfig#DISABLE_VANILLA_PORTAL_AUTO_TELEPORT} disables (see {@code
+     * portal.VanillaPortalAutoTeleportListener}'s own doc). Added 2026-11-13 for Settlemynts'
+     * {@code guardhouse.GuardReturnToDimensionGoal} to recover a guard once it's snapped onto a
+     * portal block, and used the same way by this mod's own right-click-to-cross feature.
+     *
+     * @return {@code true} if a crossing (or, for an unseen End Portal, the end-credits sequence)
+     *         was actually performed
+     */
+    public static boolean attemptPortalCrossing(ServerLevel level, Entity entity, BlockPos portalPos) {
+        return PortalCrossing.attempt(level, entity, portalPos);
+    }
+
+    /**
+     * Runs {@code action} with {@code VanillaPortalAutoTeleportListener}'s own cancellation
+     * suppressed, so a deliberate cross-dimension {@code Entity#teleport(TeleportTransition)} call
+     * inside it is never wrongly cancelled just because the entity happens to be standing on a real
+     * portal block at that moment -- see {@code portal.PortalAutoTeleportBypass}'s own doc. Added
+     * 2026-11-13 for Caryvan's {@code interaction.WagonMountPortalFollowListener}, whose team
+     * mount/wagon are routinely still overlapping the portal plane they're being towed through at
+     * the exact moment it teleports them directly.
+     */
+    public static void runPortalCrossingBypassed(Runnable action) {
+        PortalAutoTeleportBypass.run(action);
     }
 }

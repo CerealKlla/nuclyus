@@ -41,6 +41,17 @@ public final class NuclyusConfig {
                     + "every TTS-dependent feature across the suite.")
             .define("kokoroBaseUrl", "http://127.0.0.1:8880");
 
+    public static final ModConfigSpec.BooleanValue DISABLE_VANILLA_PORTAL_AUTO_TELEPORT = BUILDER
+            .comment("If true, standing in a Nether/End portal no longer automatically teleports an "
+                    + "entity -- a player must right-click the portal block to cross (carrying their "
+                    + "current vehicle, if mounted). Added 2026-11-13: vanilla's automatic per-tick "
+                    + "crossing let a summoned mount/companion or a town guard wander into a portal "
+                    + "entirely on its own with nothing tracking it, which was the root cause of both "
+                    + "a summon-duplication exploit and guards going missing forever after chasing a "
+                    + "target through one. Does not affect TinyWyrld entrances/exits (their own "
+                    + "blocks, never vanilla's NetherPortalBlock/EndPortalBlock) or End Gateways.")
+            .define("disableVanillaPortalAutoTeleport", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private NuclyusConfig() {

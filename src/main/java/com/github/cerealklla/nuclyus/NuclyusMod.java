@@ -4,6 +4,8 @@ import com.github.cerealklla.nuclyus.chunkload.ChunkClaims;
 import com.github.cerealklla.nuclyus.config.NuclyusConfig;
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
+import com.github.cerealklla.nuclyus.portal.PlayerPortalRightClickListener;
+import com.github.cerealklla.nuclyus.portal.VanillaPortalAutoTeleportListener;
 import com.github.cerealklla.nuclyus.statbar.HealthStatBarProvider;
 import com.github.cerealklla.nuclyus.statbar.StatBarRegistry;
 import com.github.cerealklla.nuclyus.tag.TagRegistry;
@@ -39,6 +41,8 @@ public class NuclyusMod {
         ModTradeComponents.DATA_COMPONENTS.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, NuclyusConfig.SPEC);
         NeoForge.EVENT_BUS.addListener((ServerStartingEvent event) -> TagRegistry.loadOrGenerate(event.getServer()));
+        NeoForge.EVENT_BUS.register(new VanillaPortalAutoTeleportListener());
+        NeoForge.EVENT_BUS.register(new PlayerPortalRightClickListener());
     }
 
     private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {

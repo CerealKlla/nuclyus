@@ -156,3 +156,20 @@ doesn't close on its own). Replaces Settlemynts' `npc.NpcHealthBar` and Lyfe's
 Settlemynts, whole-suite (13 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet
 live-tested** -- the new client rendering code has only been confirmed to compile, not to actually
 draw correctly in a real client session.
+
+**Vanilla Nether/End portal auto-teleport disabled by default; manual crossing API added,
+2026-11-13** (see [context/decisions.md](context/decisions.md),
+[context/classes/Portal.md](context/classes/Portal.md)) -- new `portal` package: standing in a real
+Nether/End portal no longer auto-teleports anything (`NuclyusConfig
+#DISABLE_VANILLA_PORTAL_AUTO_TELEPORT`, default on); a player right-clicks the portal instead
+(carrying their current vehicle, if mounted). Root cause this fixes: vanilla's own per-tick
+in-portal detection ran for any entity, which is what let an unridden summoned mount/companion
+cross a portal entirely on its own (Lyfe's summon-duplication exploit) and let a Guard chasing a
+target wander through one and end up stranded (Settlemynts' "guards disappearing forever"). New
+`api.Nuclyus#attemptPortalCrossing`/`#runPortalCrossingBypassed` let other mods trigger or
+piggyback a crossing manually -- consumed the same day by Settlemynts' `GuardReturnToDimensionGoal`
+(recovering an already-stranded guard) and Caryvan's `WagonMountPortalFollowListener` (so its own
+direct cross-dimension calls aren't wrongly cancelled). Does not affect TinyWyrld entrances/exits or
+End Gateways -- neither is a `NetherPortalBlock`/`EndPortalBlock`. `./gradlew build` green in all
+three repos, whole-suite (17 mods) rebuild + `runServer` boot-smoke-test clean. **Not yet
+live-tested or deployed.**
