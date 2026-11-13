@@ -2,6 +2,7 @@ package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.menu.client.NuclyusMenuScreen;
 import com.github.cerealklla.nuclyus.ping.client.ClientPingScanner;
+import com.github.cerealklla.nuclyus.portal.client.PortalPromptOverlay;
 import com.github.cerealklla.nuclyus.statbar.client.StatBarWorldOverlay;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -39,6 +40,7 @@ public class NuclyusModClient {
     @SubscribeEvent
     static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAboveAll(Identifier.fromNamespaceAndPath(NuclyusMod.MODID, "stat_bar_overlay"), new StatBarWorldOverlay());
+        event.registerAboveAll(Identifier.fromNamespaceAndPath(NuclyusMod.MODID, "portal_prompt_overlay"), new PortalPromptOverlay());
     }
 
     @SubscribeEvent
