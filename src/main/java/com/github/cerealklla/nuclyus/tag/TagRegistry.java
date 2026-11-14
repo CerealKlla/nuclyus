@@ -20,6 +20,14 @@ import net.minecraft.server.MinecraftServer;
  * Flat/unnamespaced by design -- a tag like "Dark" or "Orcish" is a general descriptor any content
  * type can use, not scoped to whichever mod first requested it.
  *
+ * <p><b>"Later" arrived 2026-11-13</b> -- Blueprynts' own first tag feature pass that same day was
+ * built as a separate free-text field without checking for this class first (a real miss, caught
+ * and corrected the same day: "They are SUPPOSED to be the same exact tag system, with the same
+ * library of tags"). {@code construction.BlueprintTagPickerScreen}/{@code
+ * BlueprintTagReviewScreen}/{@code BlueprintTagApprovalRelay} now consume this registry exactly
+ * the way TinyWyrlds' own {@code wyrldprint.workbench}/{@code wyrldprint.tag} classes already did --
+ * the "zero migration" this doc originally promised.
+ *
  * <p>Built on two {@link PersistedServerStore} instances rather than one hand-rolled file -- {@code
  * approved} is keyed by its own tag text (identity key, since all that's ever needed is "does this
  * exist"), {@code pending} is keyed by {@link PendingTag#tag}. Each persists to its own small JSON
