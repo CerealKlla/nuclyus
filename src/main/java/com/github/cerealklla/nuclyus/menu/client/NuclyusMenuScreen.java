@@ -72,7 +72,29 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
             tab.attachHost(this);
         }
         this.activeIndex = firstEnabledIndex();
+        applyPendingInitialTab();
         this.initialized = true;
+    }
+
+    /**
+     * Shared by both constructors (added 2026-11-13 for Blueprynts' Construction Site, whose own
+     * screen rebuilds a brand-new fixed-tab instance on every server-side mutation -- see {@link
+     * #requestInitialTab}'s own doc, which previously only covered the shared K-menu's no-arg/
+     * registry path; a fixed-tab host that gets fully reconstructed this often needs the exact same
+     * "resume where you were" capability or every single button click would silently snap back to
+     * the first enabled tab).
+     */
+    private void applyPendingInitialTab() {
+        if (pendingInitialTabTitle == null) {
+            return;
+        }
+        for (int i = 0; i < tabs.size(); i++) {
+            if (tabs.get(i).enabled() && tabs.get(i).title().getString().equals(pendingInitialTabTitle)) {
+                activeIndex = i;
+                break;
+            }
+        }
+        pendingInitialTabTitle = null;
     }
 
     /**
@@ -94,15 +116,7 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
                 tab.attachHost(this);
             }
             activeIndex = firstEnabledIndex();
-            if (pendingInitialTabTitle != null) {
-                for (int i = 0; i < tabs.size(); i++) {
-                    if (tabs.get(i).enabled() && tabs.get(i).title().getString().equals(pendingInitialTabTitle)) {
-                        activeIndex = i;
-                        break;
-                    }
-                }
-                pendingInitialTabTitle = null;
-            }
+            applyPendingInitialTab();
             initialized = true;
         }
         // Vanilla's own init() wrapper already cleared this screen's widget list before calling this
@@ -112,6 +126,17 @@ public final class NuclyusMenuScreen extends Screen implements WidgetHost {
         if (!tabs.isEmpty()) {
             tabs.get(activeIndex).onShown();
         }
+    }
+
+    /**
+     * The currently active tab's own title string -- added 2026-11-13 alongside {@link
+     * #applyPendingInitialTab}, for a caller about to rebuild a fixed-tab host from scratch (e.g.
+     * after a server-side mutation forces a fresh screen) to capture before replacing it, then pass
+     * straight back into {@link #requestInitialTab} so the rebuild lands on the same tab. {@code
+     * null} if this screen currently has no tabs at all.
+     */
+    public String activeTabTitle() {
+        return tabs.isEmpty() ? null : tabs.get(activeIndex).title().getString();
     }
 
     private int firstEnabledIndex() {
