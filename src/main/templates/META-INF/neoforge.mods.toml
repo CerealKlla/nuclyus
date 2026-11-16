@@ -28,3 +28,9 @@ contributing mods).
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
+
+# Nuclyus' first-ever mixin, added 2026-11-16 for the single-sapling Dark Oak/Pale Oak growth fix --
+# see worldgen.mixin.TreeGrowerMixin's own doc comment for why no event-based alternative covers
+# this (no SaplingGrowTreeEvent or equivalent exists in this NeoForge version).
+[[mixins]]
+config="${mod_id}.mixins.json"
