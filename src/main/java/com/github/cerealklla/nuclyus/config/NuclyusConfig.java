@@ -52,6 +52,16 @@ public final class NuclyusConfig {
                     + "blocks, never vanilla's NetherPortalBlock/EndPortalBlock) or End Gateways.")
             .define("disableVanillaPortalAutoTeleport", true);
 
+    public static final ModConfigSpec.BooleanValue DISABLE_PHANTOM_INSOMNIA_SPAWNING = BUILDER
+            .comment("If true, the vanilla 'insomnia' mechanic (phantoms spawning above a player who "
+                    + "hasn't slept in a long time, via the spawn_phantoms gamerule) is force-disabled "
+                    + "on every server start. Added 2026-11-18: this had already been turned off via "
+                    + "the gamerule directly, but a gamerule lives in the world save and silently reset "
+                    + "to vanilla's default (on) the next time the world was wiped -- this makes the "
+                    + "setting durable across wipes instead of a one-time manual fix. Does not affect "
+                    + "phantoms added to the normal spawn pool (see this mod's own biome_modifier).")
+            .define("disablePhantomInsomniaSpawning", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private NuclyusConfig() {

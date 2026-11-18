@@ -2,6 +2,7 @@ package com.github.cerealklla.nuclyus;
 
 import com.github.cerealklla.nuclyus.chunkload.ChunkClaims;
 import com.github.cerealklla.nuclyus.config.NuclyusConfig;
+import com.github.cerealklla.nuclyus.phantom.PhantomInsomniaListener;
 import com.github.cerealklla.nuclyus.ping.PingCandidatesPayload;
 import com.github.cerealklla.nuclyus.ping.PingDispatcher;
 import com.github.cerealklla.nuclyus.portal.PlayerPortalRightClickListener;
@@ -43,6 +44,7 @@ public class NuclyusMod {
         NeoForge.EVENT_BUS.addListener((ServerStartingEvent event) -> TagRegistry.loadOrGenerate(event.getServer()));
         NeoForge.EVENT_BUS.register(new VanillaPortalAutoTeleportListener());
         NeoForge.EVENT_BUS.register(new PlayerPortalRightClickListener());
+        NeoForge.EVENT_BUS.register(new PhantomInsomniaListener());
     }
 
     private void commonSetup(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
