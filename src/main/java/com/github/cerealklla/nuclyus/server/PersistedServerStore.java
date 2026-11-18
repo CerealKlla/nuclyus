@@ -87,6 +87,24 @@ public abstract class PersistedServerStore<K, V> {
     /** Builds a brand-new generated set -- called only when no on-disk file exists yet, or on a forced {@link #reroll}. */
     protected abstract Map<K, V> generate();
 
+    /**
+     * Whether a loaded file should still call {@link #generate} once more, purely to self-heal any
+     * key a later code change might have added to the generated set (see {@link #mergeMissing}'s own
+     * doc) -- {@code true} by default. Override to {@code false} when {@link #generate} isn't safe to
+     * call speculatively just to diff keys -- e.g. one with real side effects beyond building the
+     * returned map (minting a new persisted object elsewhere, not just computing one) -- or when a
+     * store can only ever have the exact key set it started with, so there's nothing to self-heal.
+     * Added 2026-11-17, real bug: {@code terrytories.kingdom.KingdomStore#generate} calls {@code
+     * KingdomGenerator#generateInitialKingdom}, which mints a brand-new Faction via {@code
+     * api.Terrytories#createFaction} as a side effect on every call -- {@link #mergeMissing} was
+     * calling it on literally every boot once the file already existed (to check for a key it never
+     * actually needed, since this store only ever has one entry), silently minting a fresh orphaned
+     * "Kingdom" Faction each restart even though the diff itself always discarded the result.
+     */
+    protected boolean supportsMergeMissing() {
+        return true;
+    }
+
     /** Hook for a subclass that needs to recompute derived state whenever the underlying set changes; no-op by default. */
     protected void onLoaded() {
     }
@@ -99,7 +117,7 @@ public abstract class PersistedServerStore<K, V> {
         Path file = resolveFile(server);
         this.file = file;
         if (Files.exists(file)) {
-            values = load(file).map(loaded -> mergeMissing(loaded, file)).orElseGet(() -> generateAndSave(file));
+            values = load(file).map(loaded -> supportsMergeMissing() ? mergeMissing(loaded, file) : loaded).orElseGet(() -> generateAndSave(file));
         } else {
             values = generateAndSave(file);
         }
