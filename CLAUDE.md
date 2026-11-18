@@ -178,6 +178,21 @@ after a follow-up instruction caught it as the one real violation. **Deployed to
 403.** Live confirmation (an actual player crossing, a guard recalling, a wagon rig crossing with
 its driver) still pending.
 
+**Phantom "insomnia" spawning force-disabled on boot; phantoms added to the normal spawn pool,
+2026-11-18** -- real report: "I told you to disable the insomnia thing that forces phantoms to
+spawn constantly. I guess that was a server setting that got reset with the wipe." The
+`spawn_phantoms` gamerule had been turned off by hand, but a gamerule lives in the world save and
+silently resets to vanilla's default (on) on any future wipe. New `phantom.PhantomInsomniaListener`
+forces it off on every `ServerStartingEvent`, gated on `NuclyusConfig
+#DISABLE_PHANTOM_INSOMNIA_SPAWNING` (default on) -- durable across any future wipe, no manual
+re-fix needed. Paired with a `neoforge:add_spawns` biome modifier
+(`data/nuclyus/neoforge/biome_modifier/phantom_normal_spawns.json`, `#minecraft:is_overworld`, low
+weight) so phantoms can still appear via the normal spawn pool instead of only the
+insomnia-specific mechanic. `./gradlew build` green, whole-suite (17 mods) rebuild +
+`runServer` boot-smoke-test clean from Cartographyr. **Deployed to Production (Build 449) and
+confirmed live** via RCON directly against the real server (`gamerule spawn_phantoms` reports
+`false` right after boot).
+
 **"Right Click to use Portal" HUD prompt, same day** (see
 [context/decisions.md](context/decisions.md)) -- explicit follow-up request: standing in a portal
 now does nothing visible at all, so a prompt was needed. New `portal.client.PortalPromptOverlay`
